@@ -3,6 +3,7 @@ import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { LEAD_TYPES } from '../hooks/useLeadData.js';
 import { useDashboard } from '../context/DashboardContext.jsx';
+import logo from "../assets/icon128.png"
 
 const STATUS_INFO = {
   connected:    { label: 'Connected to extension', color: '#4ade80' },
@@ -34,23 +35,19 @@ const Sidebar = () => {
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <div
             style={{
-              width: '28px',
-              height: '28px',
-              background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)',
+              width: '35px',
+              height: '35px',
+              // background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)',
               borderRadius: '7px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
             }}
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
-              <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2" />
-              <rect x="9" y="3" width="6" height="4" rx="1" />
-              <path d="M9 12h6M9 16h4" />
-            </svg>
+            <img src={logo} alt="Logo" />
           </div>
           <div>
-            <div style={{ fontSize: '13px', fontWeight: 700, color: '#f1f5f9', lineHeight: 1 }}>TM Leads</div>
+            <div style={{ fontSize: '13px', fontWeight: 700, color: '#f1f5f9', lineHeight: 1 }}>USPTO Leads</div>
             <div style={{ fontSize: '9px', color: '#475569', marginTop: '2px' }}>Dashboard</div>
           </div>
         </div>
