@@ -6,7 +6,7 @@
 // DeadAbanMissing.jsx, ...) sirf 3 lines ka thin wrapper hai jo yahan se
 // component banwata hai. Look & feel Dashboard.jsx se 100% match karta hai.
 
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useDashboard } from '../context/DashboardContext.jsx';
 import { useLeadData, LEAD_TYPES } from '../hooks/useLeadData.js';
@@ -19,6 +19,10 @@ const ROUTE_OF = {
   liveRegister: 'liveregister',
 };
 
+// Sidebar ki width — agar aapka actual Sidebar component isse different
+// width use karta hai to yahan update kar dein, fixed header isi se align hota hai.
+const SIDEBAR_WIDTH = '220px';
+
 // ── Parent wrapper: header + Valid/Missing tabs + <Outlet/> ──────────────
 export function createTypeWrapper(typeKey) {
   const TypeWrapper = () => {
@@ -29,9 +33,38 @@ export function createTypeWrapper(typeKey) {
     const base = `/${ROUTE_OF[typeKey]}`;
     const isMissing = location.pathname.endsWith('/missing');
 
+    // Header ki real height measure karte hain taake neeche wala content
+    // (Outlet) usi amount se push ho jaye, aur LeadsTable ki sticky filter
+    // bar bhi isi height par stick ho sake.
+    const headerRef = useRef(null);
+    useEffect(() => {
+      const el = headerRef.current;
+      if (!el) return;
+      const updateHeight = () => {
+        document.documentElement.style.setProperty('--leadtype-header-h', `${el.offsetHeight}px`);
+      };
+      updateHeight();
+      const ro = new ResizeObserver(updateHeight);
+      ro.observe(el);
+      return () => ro.disconnect();
+    }, [typeKey]);
+
     return (
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-        <div style={{ padding: '20px 24px 0', borderBottom: '1px solid #1e293b', flexShrink: 0 }}>
+        <div
+          ref={headerRef}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: SIDEBAR_WIDTH,
+            right: 0,
+            zIndex: 20,
+            padding: '20px 24px 0',
+            borderBottom: '1px solid #1e293b',
+            flexShrink: 0,
+            background: '#020817',
+          }}
+        >
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
             <div
               style={{
@@ -114,7 +147,7 @@ export function createTypeWrapper(typeKey) {
           </div>
         </div>
 
-        <div style={{ flex: 1, overflowY: 'auto' }}>
+        <div style={{ flex: 1, overflowY: 'auto', paddingTop: 'var(--leadtype-header-h, 0px)' }}>
           <Outlet />
         </div>
       </div>

@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { LEAD_TYPES, DATE_LABELS, deleteSingleLead, deleteMultipleLeads } from '../hooks/useLeadData.js';
 import { TrashIcon, Checkbox } from './icons.jsx';
-import { FilterBar, BulkActionBar, applyFilters } from './Filter.jsx';
+import { FilterBar, BulkActionBar, applyFilters, highlight, searchRegex, LLC_INC_DISPLAY_REGEX } from './Filter.jsx';
 
 export { TrashIcon, Checkbox } from './icons.jsx';
 
@@ -41,6 +41,25 @@ function RowWithCheckbox({ children, isSelected, isDeleting, onToggle }) {
 
 const COLUMNS = ['#', 'Serial', 'Mark', 'Date', 'Correspondent', 'Phone', 'Email', ''];
 
+// Highlights search-query matches in blue — used on Serial, Mark, Date, Phone, Email
+function searchHighlight(text, searchQuery) {
+  return searchQuery ? highlight(text, searchRegex(searchQuery), { bg: '#3b82f633', color: '#60a5fa' }) : text;
+}
+
+// Correspondent column needs BOTH highlights layered: LLC/INC (violet) first,
+// then search-query (blue) scanned only over what LLC/INC left untouched —
+// so typing a search term still highlights even inside an LLC/INC match.
+function correspondentHighlight(text, filterLLC, filterINC, searchQuery) {
+  let content = text;
+  if (filterLLC || filterINC) {
+    content = highlight(content, LLC_INC_DISPLAY_REGEX, { bg: '#7c3aed33', color: '#a78bfa' });
+  }
+  if (searchQuery) {
+    content = highlight(content, searchRegex(searchQuery), { bg: '#3b82f633', color: '#60a5fa' });
+  }
+  return content;
+}
+
 // type: lead type key (e.g. 'deadAbandoned')
 // subType: 'valid' | 'missing'
 // leads: array passed down from the page component (already fetched via useLeadData)
@@ -49,15 +68,18 @@ export default function LeadsTable({ leads, type, subType }) {
   const [deletingId, setDeletingId] = useState(null);
   const [filterLLC, setFilterLLC] = useState(false);
   const [filterINC, setFilterINC] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
 
   const dateLabel = DATE_LABELS[type] || 'Date';
   const accentColor = LEAD_TYPES.find((t) => t.key === type)?.color || '#3b82f6';
 
-  const filteredLeads = applyFilters(leads, filterLLC, filterINC);
+  const filteredLeads = applyFilters(leads, filterLLC, filterINC, searchQuery, dateFrom, dateTo);
 
   useEffect(() => {
     setSelected(new Set());
-  }, [leads, filterLLC, filterINC]);
+  }, [leads, filterLLC, filterINC, searchQuery, dateFrom, dateTo]);
 
   const allChecked = filteredLeads.length > 0 && selected.size === filteredLeads.length;
   const someChecked = selected.size > 0 && selected.size < filteredLeads.length;
@@ -106,9 +128,7 @@ export default function LeadsTable({ leads, type, subType }) {
         <span style={{ fontSize: '14px', fontWeight: 500 }}>
           No {subType === 'valid' ? 'valid' : 'missing phone'} leads yet
         </span>
-        <span style={{ fontSize: '12px', color: '#334155' }}>
-          Scan leads from the extension popup to populate this table
-        </span>
+  
       </div>
     );
   }
@@ -121,6 +141,12 @@ export default function LeadsTable({ leads, type, subType }) {
         setFilterLLC={setFilterLLC}
         filterINC={filterINC}
         setFilterINC={setFilterINC}
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        dateFrom={dateFrom}
+        setDateFrom={setDateFrom}
+        dateTo={dateTo}
+        setDateTo={setDateTo}
         filteredCount={filteredLeads.length}
       />
 
@@ -186,40 +212,29 @@ export default function LeadsTable({ leads, type, subType }) {
                     <td style={{ padding: '10px 14px', color: '#334155', fontSize: '11px' }}>{i + 1}</td>
                     <td style={{ padding: '10px 14px' }}>
                       <a
-                        href={`https://tsdr.uspto.gov/#caseNumber=${lead.serial}&caseType=SERIAL_NO&searchType=statusSearch`}
+                        href={`https://tsdr.uspto.gov/#caseNumber=${lead.serial}&caseType=SERIAL_NO&searchType=documentSearch`}
                         target="_blank"
                         rel="noreferrer"
                         style={{ color: accentColor, textDecoration: 'none', fontWeight: 600 }}
                         onMouseEnter={(e) => (e.target.style.textDecoration = 'underline')}
                         onMouseLeave={(e) => (e.target.style.textDecoration = 'none')}
                       >
-                        {lead.serial}
+                        {searchHighlight(lead.serial, searchQuery)}
                       </a>
                     </td>
                     <td style={{ padding: '10px 14px', color: '#e2e8f0', maxWidth: '200px' }}>
-                      <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{lead.mark}</div>
+                      <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{searchHighlight(lead.mark, searchQuery)}</div>
                     </td>
-                    <td style={{ padding: '10px 14px', color: '#94a3b8', whiteSpace: 'nowrap' }}>{lead.leadDate}</td>
+                    <td style={{ padding: '10px 14px', color: '#94a3b8', whiteSpace: 'nowrap' }}>{searchHighlight(lead.leadDate, searchQuery)}</td>
                     <td style={{ padding: '10px 14px', color: '#cbd5e1', maxWidth: '180px' }}>
                       <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {(filterLLC || filterINC) ? (
-                          <span
-                            dangerouslySetInnerHTML={{
-                              __html: (lead.correspondent || '').replace(
-                                /(llc|l\.l\.c\.?|inc|i\.n\.c\.?)/gi,
-                                (m) => `<mark style="background:#7c3aed33;color:#a78bfa;border-radius:2px;padding:0 2px">${m}</mark>`
-                              ),
-                            }}
-                          />
-                        ) : (
-                          lead.correspondent
-                        )}
+                        {correspondentHighlight(lead.correspondent, filterLLC, filterINC, searchQuery)}
                       </div>
                     </td>
                     <td style={{ padding: '10px 14px', whiteSpace: 'nowrap' }}>
                       {lead.phone ? (
                         <a href={`tel:${lead.phone}`} style={{ color: '#4ade80', textDecoration: 'none' }}>
-                          {lead.phone}
+                          {searchHighlight(lead.phone, searchQuery)}
                         </a>
                       ) : (
                         <span style={{ color: '#ef4444', fontSize: '11px' }}>MISSING</span>
@@ -228,7 +243,7 @@ export default function LeadsTable({ leads, type, subType }) {
                     <td style={{ padding: '10px 14px', maxWidth: '200px' }}>
                       {lead.email && lead.email !== 'N/A' ? (
                         <a href={`mailto:${lead.email}`} style={{ color: '#60a5fa', textDecoration: 'none', fontSize: '11px' }}>
-                          {lead.email}
+                          {searchHighlight(lead.email, searchQuery)}
                         </a>
                       ) : (
                         <span style={{ color: '#475569', fontSize: '11px' }}>N/A</span>
