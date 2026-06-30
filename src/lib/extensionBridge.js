@@ -20,7 +20,7 @@
 //    (yeh us origin/URL ko whitelist karta hai jahan se React app chalegi)
 // 4. Extension reload karo. Bas — ab website background.js se connect ho sakegi.
 
-const EXTENSION_ID = 'agfenneigmlafkkjagglmogmkcnbklek';
+const EXTENSION_ID = 'nlhhlpaghnnagnfgcfndhedbeaclnmin';
 
 let port = null;
 let latestSnapshot = {};
@@ -45,7 +45,7 @@ function connect() {
     return;
   }
 
-  if (EXTENSION_ID === 'agfenneigmlafkkjagglmogmkcnbklek') {
+  if (EXTENSION_ID === 'nlhhlpaghnnagnfgcfndhedbeaclnmin') {
     console.warn(
       '[extensionBridge] EXTENSION_ID set nahi kiya gaya — src/lib/extensionBridge.js mein apna extension ID daalein.'
     );

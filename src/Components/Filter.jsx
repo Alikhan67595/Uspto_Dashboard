@@ -54,7 +54,25 @@ function parseLeadDate(dateStr) {
   return isNaN(d.getTime()) ? null : d;
 }
 
+// Special search syntax: "email=null" / "phone=null" (case-insensitive,
+// spaces ignore) — yeh normal text-match nahi karta, balki sirf un leads
+// ko dikhata hai jin ka woh field empty/N/A ho. Aage chal kar koi naya
+// "<field>=null" support karna ho to bas FIELD_NULL_MAP mein add kar dein.
+const FIELD_NULL_MAP = {
+  email: (l) => !l.email || l.email === 'N/A',
+  phone: (l) => !l.phone || l.phone === 'N/A',
+};
+
+function parseNullFieldQuery(query) {
+  const match = query.trim().match(/^(\w+)\s*=\s*null$/i);
+  if (!match) return null;
+  const field = match[1].toLowerCase();
+  return FIELD_NULL_MAP[field] ? field : null;
+}
+
 export function applyFilters(leads, filterLLC, filterINC, searchQuery, dateFrom, dateTo) {
+  const nullField = searchQuery ? parseNullFieldQuery(searchQuery) : null;
+
   return leads.filter((l) => {
     const c = l.correspondent || '';
     if (filterLLC && filterINC) {
@@ -65,7 +83,11 @@ export function applyFilters(leads, filterLLC, filterINC, searchQuery, dateFrom,
       if (!INC_REGEX.test(c)) return false;
     }
 
-    if (searchQuery) {
+    if (nullField) {
+      // "email=null" / "phone=null" jaisa special syntax mila —
+      // sirf empty/N/A wale leads pass hote hain, baqi sab hat jate hain.
+      if (!FIELD_NULL_MAP[nullField](l)) return false;
+    } else if (searchQuery) {
       const q = searchQuery.toLowerCase();
       const haystack = [l.serial, l.mark, l.correspondent, l.phone, l.email, l.leadDate].join(' ').toLowerCase();
       if (!haystack.includes(q)) return false;

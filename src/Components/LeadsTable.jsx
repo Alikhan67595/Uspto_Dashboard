@@ -3,11 +3,12 @@ import React, { useState, useEffect } from 'react';
 import { LEAD_TYPES, DATE_LABELS, deleteSingleLead, deleteMultipleLeads } from '../hooks/useLeadData.js';
 import { TrashIcon, Checkbox } from './icons.jsx';
 import { FilterBar, BulkActionBar, applyFilters, highlight, searchRegex, LLC_INC_DISPLAY_REGEX } from './Filter.jsx';
+import { useDashboard } from '../context/DashboardContext.jsx';
 
 export { TrashIcon, Checkbox } from './icons.jsx';
 
 // Row wrapper that reveals the checkbox on hover or when selected
-function RowWithCheckbox({ children, isSelected, isDeleting, onToggle }) {
+function RowWithCheckbox({ children, isSelected, isDeleting, isClicked, accentColor, onToggle }) {
   const [rowHovered, setRowHovered] = useState(false);
   const showCheckbox = rowHovered || isSelected;
 
@@ -15,9 +16,10 @@ function RowWithCheckbox({ children, isSelected, isDeleting, onToggle }) {
     <tr
       style={{
         borderBottom: '1px solid #1e293b',
+        borderLeft: isClicked ? `3px solid ${accentColor}` : '3px solid transparent',
         background: isSelected ? '#1e3a5f33' : 'transparent',
         opacity: isDeleting ? 0.4 : 1,
-        transition: 'background 0.1s, opacity 0.2s',
+        transition: 'background 0.1s, opacity 0.2s, border-left-color 0.2s',
       }}
       onMouseEnter={() => setRowHovered(true)}
       onMouseLeave={() => setRowHovered(false)}
@@ -71,6 +73,10 @@ export default function LeadsTable({ leads, type, subType }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  // Click hue lead ke serials ab Dashboard-level Context se aate hain — taake
+  // Valid/Missing tab switch karne par yeh persist rahe, lekin full page
+  // reload par naturally reset ho jaye (Context bhi sirf in-memory hai).
+  const { clickedSerials, markClicked } = useDashboard();
 
   const dateLabel = DATE_LABELS[type] || 'Date';
   const accentColor = LEAD_TYPES.find((t) => t.key === type)?.color || '#3b82f6';
@@ -202,11 +208,14 @@ export default function LeadsTable({ leads, type, subType }) {
               filteredLeads.map((lead, i) => {
                 const isSelected = selected.has(lead.serial);
                 const isDeleting = deletingId === lead.serial;
+                const isClicked = clickedSerials.has(lead.serial);
                 return (
                   <RowWithCheckbox
                     key={`${lead.serial}-${i}`}
                     isSelected={isSelected}
                     isDeleting={isDeleting}
+                    isClicked={isClicked}
+                    accentColor={accentColor}
                     onToggle={() => toggleOne(lead.serial)}
                   >
                     <td style={{ padding: '10px 14px', color: '#334155', fontSize: '11px' }}>{i + 1}</td>
@@ -215,6 +224,7 @@ export default function LeadsTable({ leads, type, subType }) {
                         href={`https://tsdr.uspto.gov/#caseNumber=${lead.serial}&caseType=SERIAL_NO&searchType=documentSearch`}
                         target="_blank"
                         rel="noreferrer"
+                        onClick={() => markClicked(lead.serial)}
                         style={{ color: accentColor, textDecoration: 'none', fontWeight: 600 }}
                         onMouseEnter={(e) => (e.target.style.textDecoration = 'underline')}
                         onMouseLeave={(e) => (e.target.style.textDecoration = 'none')}
